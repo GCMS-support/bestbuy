@@ -1,0 +1,6 @@
+.codio
+.guides/
+.settings
+__pycache__/
+_static/
+*.pyc
