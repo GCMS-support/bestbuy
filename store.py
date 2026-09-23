@@ -1,54 +1,56 @@
-from typing import List, Tuple
-
-from products import Product
+"""Store-Klasse fuer den Best-Buy-Laden."""
 
 
 class Store:
-    """Represents a store containing a collection of products."""
+    """Verwaltet eine Sammlung von Produkten."""
 
-    def __init__(self, products: List[Product]):
-        """Create a store with an initial list of products."""
-        self.products = list(products)
+    def __init__(self, products=None):
+        self.products = list(products) if products else []
 
-    def add_product(self, product: Product) -> None:
-        """Add a product to the store."""
+    def add_product(self, product):
+        """Fuegt dem Store ein Produkt hinzu."""
         self.products.append(product)
 
-    def remove_product(self, product: Product) -> None:
-        """Remove a product from the store."""
-        self.products.remove(product)
+    def remove_product(self, product):
+        """Entfernt ein Produkt aus dem Store."""
+        if product in self.products:
+            self.products.remove(product)
 
     def get_total_quantity(self) -> int:
-        """Return the total quantity of all products in the store."""
-        return sum(product.get_quantity() for product in self.products)
+        """Gibt zurueck, wie viele Artikel insgesamt im Store liegen."""
+        return sum(product.quantity for product in self.products)
 
-    def get_all_products(self) -> List[Product]:
-        """Return all active products in the store."""
+    def get_all_products(self) -> list:
+        """Gibt alle aktiven Produkte zurueck."""
         return [product for product in self.products if product.is_active()]
 
-    @staticmethod
-    def order(shopping_list: List[Tuple[Product, int]]) -> float:
-        """Buy the requested products and return the total order price."""
-        total_price = 0.0
-
+    def order(self, shopping_list) -> float:
+        """Fasst Produkte zusammen und prueft den gesamten Auftrag zuerst."""
+        quantities = {}
         for product, quantity in shopping_list:
-            total_price += product.buy(quantity)
+            if product not in self.products:
+                raise ValueError("Das Produkt gehoert nicht zu diesem Store.")
+            if (isinstance(quantity, bool)
+                    or not isinstance(quantity, int) or quantity <= 0):
+                raise ValueError(
+                    "Die Kaufmenge muss eine positive ganze Zahl sein."
+                )
+            quantities[product] = quantities.get(product, 0) + quantity
 
-        return total_price
+        # Mengen, Limits und Aktionen vor jeder Bestandsaenderung pruefen.
+        total_price = sum(
+            product.get_purchase_price(quantity)
+            for product, quantity in quantities.items()
+        )
+        for product, quantity in quantities.items():
+            product.set_quantity(product.quantity - quantity)
+        return float(total_price)
 
+    def __contains__(self, product):
+        return product in self.products
 
-def main() -> None:
-    product_list = [
-        Product("MacBook Air M2", price=1450, quantity=100),
-        Product("Bose QuietComfort Earbuds", price=250, quantity=500),
-        Product("Google Pixel 7", price=500, quantity=250),
-    ]
+    def __add__(self, other):
+        return Store(self.products + other.products)
 
-    best_buy = Store(product_list)
-    active_products = best_buy.get_all_products()
-    print(best_buy.get_total_quantity())
-    print(best_buy.order([(active_products[0], 1), (active_products[1], 2)]))
-
-
-if __name__ == "__main__":
-    main()
+    def __str__(self):
+        return "\n".join(product.show() for product in self.get_all_products())
